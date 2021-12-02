@@ -1,0 +1,38 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+    // {
+    //   "path": "./db"
+    // },
+    // {
+    //   "path": "./api"
+    // },
+    // {
+    //   "path": "./front"
+    // }
+  ],
+  "settings": {
+    "editor.tabSize": 2,
+    "editor.detectIndentation": false,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": true,
+      "source.fixAll.tslint": true,
+      "source.fixAll": true
+    },
+    "eslint.validate": ["javascript", "typescript"],
+    "javascript.updateImportsOnFileMove.enabled": "always",
+    "typescript.updateImportsOnFileMove.enabled": "always"
+  },
+  "extensions": {
+    "recommendations": [
+      "eamodio.gitlens",
+      "esbenp.prettier-vscode",
+      "eg2.tslint",
+      "dbaeumer.vscode-eslint"
+    ]
+  }
+}

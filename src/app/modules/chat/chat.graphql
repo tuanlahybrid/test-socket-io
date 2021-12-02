@@ -1,0 +1,11 @@
+type Query {
+  test: Test
+}
+
+# type Mutation {
+
+# }
+
+type Test {
+  id: Int
+}

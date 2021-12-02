@@ -1,0 +1,15 @@
+FROM node:14.15.3-alpine As development
+
+WORKDIR /src
+
+COPY package.json yarn.lock ./
+
+RUN yarn --pure-lockfile
+
+COPY . .
+
+RUN yarn generate:graphql-typings
+
+RUN yarn build
+
+CMD yarn start:prod

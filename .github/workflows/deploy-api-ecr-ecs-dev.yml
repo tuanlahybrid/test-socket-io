@@ -1,0 +1,76 @@
+name: Deploy API to ECR/ECS in development environment
+
+on:
+  push:
+    branches: [develop]
+
+env:
+  AWS_REGION: ap-northeast-1
+  ECR_REPOSITORY: kumiai-matsuri-dev-api-ecr
+  ECS_CLUSTER: kumiai-matsuri-dev-cluster
+  ECS_SERVICE: kumiai-matsuri-dev-api-service
+  ECS_CONTAINER: kumiai-matsuri-dev-api
+  ECS_TASK: kumiai-matsuri-dev-api
+
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cp -p Dockerfile.development Dockerfile
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition --task-definition $ECS_TASK --query taskDefinition > task-definition.json
+
+      - name: Render Amazon ECS task definition
+        id: render-api-container
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.ECS_CONTAINER }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-api-container.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: false
+
+      - name: Notify deployment
+        uses: 8398a7/action-slack@v3.8.0
+        with:
+          status: ${{ job.status }}
+          author_name: sonomama-api の デプロイ結果
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+          mention: 'here'  # Set group id or etc to notify the group when it fails.
+          if_mention: failure
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: always()

@@ -1,0 +1,55 @@
+version: 2.1
+orbs:
+  aws-ecr: circleci/aws-ecr@7.0.0
+  aws-ecs: circleci/aws-ecs@2.2.0
+
+workflows:
+  build-and-deploy:
+    jobs:
+      - aws-ecr/build-and-push-image:
+          name: build-and-push-image-dev
+          account-url: AWS_ECR_ACCOUNT_URL
+          aws-access-key-id: AWS_ACCESS_KEY_ID
+          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
+          dockerfile: ./Dockerfile.development
+          path: ./
+          repo: 'kumiai-matsuri-dev-api-ecr'
+          tag: '${CIRCLE_SHA1}'
+          profile-name: sonomama
+          filters:
+            branches:
+              only:
+                - develop
+
+      - aws-ecr/build-and-push-image:
+          name: build-and-push-image-staging
+          account-url: AWS_ECR_ACCOUNT_URL
+          aws-access-key-id: AWS_ACCESS_KEY_ID
+          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
+          dockerfile: ./Dockerfile.staging
+          path: ./
+          repo: 'kumiai-matsuri-stg-api-ecr'
+          tag: '${CIRCLE_SHA1}'
+          profile-name: sonomama
+          filters:
+            branches:
+              only:
+                - staging
+
+      - aws-ecs/deploy-service-update:
+          name: deploy-service-update-dev
+          requires:
+            - build-and-push-image-dev
+          family: 'kumiai-matsuri-dev-api'
+          cluster-name: 'kumiai-matsuri-dev-cluster'
+          service-name: 'kumiai-matsuri-dev-api-service'
+          container-image-name-updates: 'container=kumiai-matsuri-dev-api,tag=${CIRCLE_SHA1}'
+
+      - aws-ecs/deploy-service-update:
+          name: deploy-service-update-staging
+          requires:
+            - build-and-push-image-staging
+          family: 'kumiai-matsuri-stg-api'
+          cluster-name: 'kumiai-matsuri-stg-cluster'
+          service-name: 'kumiai-matsuri-stg-api-service'
+          container-image-name-updates: 'container=kumiai-matsuri-stg-api,tag=${CIRCLE_SHA1}'
